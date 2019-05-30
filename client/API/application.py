@@ -31,7 +31,7 @@ class MyApp(QMainWindow):
         QMainWindow.__init__(self)
         self.last_pressed_but = None
         self.timer = QTimer(self)
-        self.timer_interval = 1
+        self.timer_interval = 15
         self.setWindowTitle('Go game')
         self.mouse_position = None
         x = 0
@@ -43,6 +43,9 @@ class MyApp(QMainWindow):
         self.score_label = QLabel('Счет: 0', self)
         self.game_position = QLabel('Ход игорка с ником:', self)
         self.initUI()
+
+        self._start_event_time = None
+
         self.timer.timeout.connect(self.update)
         # now bots train own skill
         self.change_game_with_no_player()
@@ -101,6 +104,7 @@ class MyApp(QMainWindow):
 
         self.game_hard_buttons()
 
+        self._time_to_start = 0
         # game with two players
         self.QBut_player = QPushButton('Играть вдвоем', self)
         self.QBut_player.setGeometry(650, 500, 200, 40)
@@ -123,7 +127,7 @@ class MyApp(QMainWindow):
                     (dx, dy))
 
     def game_dimensionality_buttons(self):
-        # to change dimentionality to 
+        # to change dimentionality to
         indent = 50
         counter = 0
         for dim in [9, 13, 17, 19]:
@@ -137,9 +141,8 @@ class MyApp(QMainWindow):
                 "background-color:rgb(176, 176, 63)")
             counter += 1
 
-
     def game_hard_buttons(self):
-        # to change dimentionality to 
+        # to change dimentionality to
         indent = 50
         counter = 0
         for hard in ['50k', '40k', '20k', '10k']:
@@ -163,7 +166,6 @@ class MyApp(QMainWindow):
             self.last_pressed_but = but
             self._ai = GoAI if hard == '50k' else EasyAI
         return _set
-
 
     def set_dimensionality_method(self, dim: int, but):
         def _set():
@@ -216,18 +218,19 @@ class MyApp(QMainWindow):
                                       StoneSide.WHITE))
 
     def change_game_with_player(self):
+        # self._time_to_start = 3
         self.board.restart(self._dimensionality)
         self.board.set_players(self._ai('Робот', self.board,
-                                    StoneSide.BLACK),
+                                        StoneSide.BLACK),
                                Player('Игрок', self.board,
                                       StoneSide.WHITE))
 
     def change_game_with_no_player(self):
         self.board.restart(self._dimensionality)
         self.board.set_players(self._ai('Виталя', self.board,
-                                    StoneSide.BLACK),
+                                        StoneSide.BLACK),
                                self._ai('W1354', self.board,
-                                    StoneSide.WHITE))
+                                        StoneSide.WHITE))
 
     # endregion
 
@@ -236,8 +239,9 @@ class MyApp(QMainWindow):
         painter.setPen(Qt.black)
         painter.setBrush(QColor(155, 88, 19, 200))
         painter.setBackground(Qt.blue)
-        # off buttons
 
+        # TODO move buttons from paint event
+        # off buttons
         if self.board.get_current_player().is_player:
             self.QBut_pass.setEnabled(True)
         else:
@@ -296,6 +300,16 @@ class MyApp(QMainWindow):
             last_stone = (last_stone[0] - 0.5, last_stone[1] - 0.5)
             StoneQGraphics((last_stone), QColor(
                 72, 177, 203, 75)).paint(painter)
+
+        if self._time_to_start > 0:
+            painter.setFont = QFont("Times", 50, QFont.Bold)
+            if self._start_event_time is None:
+                self._start_event_time = time.time()
+            painter.drawText(200, 200, 200, 200, 300,
+                            str(self._time_to_start))
+            self._time_to_start -= time.time() - self._start_event_time
+        else: 
+            self._start_event_time = None
 
     def pause(self):
         if self.timer.isActive():

@@ -13,6 +13,7 @@ class Board(object):
 
     # TODO create iter
     def __init__(self, dimensionality):
+        # TODO think ...
         self._dimensionality = dimensionality
         self.groups = []
         self._score = 0
@@ -24,20 +25,25 @@ class Board(object):
         self._players = {}
         self.paused = False
 
-    @lru_cache()
-    def is_possible(self, position: (int, int)):
+    # @lru_cache()
+    def is_possible(self, position: (int, int)) -> bool:
+        """ Shows if *position* on the board is possible to
+        be setted by stone.  
+        """
+
         if self.get_liberty(position) == 0:
-            # region the KO rule
+            # the KO rule
             if len(self._last_stones)-2 > 0 and \
                     self._last_stones[len(self._last_stones)-2] == position:
                 return False
             if self._last_position == position:
                 return False
-            # endregion
+
             for neighbour in self.get_neighbours(position):
                 if self[neighbour].liberty == 1\
                         and self[neighbour].side != self.turn:
                     return True
+
             bad_liberty = True
             for neighbour in self.get_neighbours(position):
                 if self[neighbour].side == self.turn\
@@ -45,6 +51,7 @@ class Board(object):
                     bad_liberty = False
             if bad_liberty:
                 return False
+
         return True
 
     @property
@@ -64,6 +71,9 @@ class Board(object):
         return len(self._players.keys()) >= 2
 
     def restart(self, dim: int):
+        """ Prepare game to new game, don't stop game loop
+        """
+
         players = self._players
         self.paused = True
         self.__init__(dim)
@@ -89,6 +99,8 @@ class Board(object):
         return None
 
     def pass_move(self):
+        """ Skip move and change turn. """
+
         if self._is_passed:
             self.paused = True
             self.update_score()
@@ -96,14 +108,20 @@ class Board(object):
         self._change_turn()
 
     def update_score(self):
+        """ Update score and culc score using liberty 
+        and sone location
+        """
+
+        # TODO
         pass
 
     def _change_turn(self):
         # clear of cache
-        self.is_possible.cache_clear()
+        # self.is_possible.cache_clear()
         self.get_neighbours.cache_clear()
         self.get_liberty.cache_clear()
 
+        # TODO here is danger part of code: idea of 2 StoneSides is broken
         if self._turn == StoneSide.BLACK:
             self._turn = StoneSide.WHITE
         elif self._turn == StoneSide.WHITE:
@@ -112,7 +130,12 @@ class Board(object):
             raise Exception('Wrong turn')
 
     def add(self, position: (int, int)):
+        """ Add stone  with *position* to board.
+
+            All main game logic is here. """
+
         if position is None:
+            # self.update()
             return
         if not 0 <= position[0] < self.dimensionality\
                 or not 0 <= position[1] < self.dimensionality:
@@ -134,21 +157,24 @@ class Board(object):
                         group._add(position,
                                    self.get_free_stones(position))
                     added_group = group
-                    # self.update()
+
         if added_group == self.EMPTY_GROUP:
             self.groups.append(StoneGroup(self.turn,
                                           self.get_free_stones(position),
                                           position))
         for group in remove_list:
             self.groups.remove(group)
+
         self._last_position = position
         self._last_stones.append(position)
-        self.update()
+        self._update()
         self._change_turn()
         self._is_passed = False
         # print(len(self.groups))
 
     def get_free_stones(self, position):
+        # TODO remove
+
         result = set()
         if self.is_cantainable((position[0] + 1, position[1])):
             result.add((position[0] + 1, position[1]))
@@ -162,7 +188,9 @@ class Board(object):
 
     @lru_cache()
     def get_liberty(self, position):
-        # return liberty of single stone
+        """ Return liberty of single stone.
+        """
+
         liberty = 0
         if self.is_cantainable((position[0] + 1, position[1])):
             liberty += 1
@@ -174,16 +202,20 @@ class Board(object):
             liberty += 1
         return liberty
 
-    def update(self):
+    def _update(self):
+        """ Update and remove odd created groups. 
+        """
         remove_list = []
         for group in self.groups:
             group._free_stones = set()
             for position in group:
                 group._free_stones.update(
                     self.get_free_stones(position))
+
         for group in self.groups:
             if group.liberty == 0 and not self._last_position in group:
                 remove_list.append(group)
+
         for group in remove_list:
             if group.side == StoneSide.WHITE:
                 self._score += len(group)
@@ -192,7 +224,8 @@ class Board(object):
             self.groups.remove(group)
 
     def __str__(self):
-        # TODO ok string format
+        # TODO string fit to serialization
+
         result = ''
         for dx in range(self.dimensionality):
             for dy in range(self.dimensionality):
@@ -203,11 +236,13 @@ class Board(object):
             result += '\n'
         return result
 
-    def str_with_liberty(self):
+    def str_with_liberty(self) -> str:
+        """ Return game field with number of group liberty in stone
+        location.
+        """
+
         result = 'Board with {} groups.\n'.format(len(self.groups)) +\
             'Score: {}\n'.format(self._score)
-        # for group in self:
-        #    result += str(group) + '\n'
 
         for dx in range(self.dimensionality):
             for dy in range(self.dimensionality):
@@ -216,13 +251,15 @@ class Board(object):
                 else:
                     result += '-'
             result += '\n'
+
         return result
 
-    def game_format(self):
+    def game_format(self) -> str:
+        """ Return game field with 'B' - black and 'W' - white in cell. 
+        """
+
         result = 'Board with {} groups.\n'.format(len(self.groups)) +\
             'Score: {}\n'.format(self._score)
-        # for group in self:
-        #    result += str(group) + '\n'
 
         for dx in range(self.dimensionality):
             for dy in range(self.dimensionality):
@@ -231,10 +268,13 @@ class Board(object):
                 else:
                     result += ' '
             result += '\n'
+
         return result
 
     @lru_cache()
-    def get_neighbours(self, position):
+    def get_neighbours(self, position) -> list:
+        """ Return neighbours of *position* on the board
+        """
         result = []
         # here were "=="'s
         if type(self[(position[0] + 1, position[1])]) is StoneGroup:
@@ -248,17 +288,24 @@ class Board(object):
         return result
 
     # @once
-    def set_players(self, pl1, pl2):
+    def set_players(self, *args):
+        # TODO add sides to StoneSide
+        """ Set players in game, clear old players list"""
         self._players.clear()
-        self._players[StoneSide.BLACK] = pl1
-        self._players[StoneSide.WHITE] = pl2
+
+        for player in args:
+            self._players[player.side] = player
 
     def get_current_player(self):
+        """ Return current IPlayer object """
         return self._players[self.turn]
 
     def game_update(self):
+        """ Method to game update loop """
+
         while self.is_started:
             if self.is_ready and \
                     not self.paused and\
                     self._players[self.turn]:
                 self.add(self._players[self.turn].make_disidion())
+            self._update()

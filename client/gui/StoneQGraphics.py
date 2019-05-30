@@ -18,6 +18,14 @@ class StoneQGraphics(QGraphicsItem):
 
     def paint(self, painter):
         x, y = self.xy
+
+        # TODO shadow
+        # colour = QBrush(QColor(138,))
+        # painter.setBrush(colour)
+        # painter.drawEllipse(x * 30 + 75 + 5, y * 30 + 5 + 75,
+        #                     self._radius, self._radius)
+
         colour = QBrush(QColor(self.colour))
         painter.setBrush(colour)
-        painter.drawEllipse(x*30 + 75, y*30 + 75, self._radius, self._radius)
+        painter.drawEllipse(x * 30 + 75, y * 30 + 75,
+                            self._radius, self._radius)

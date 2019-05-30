@@ -14,6 +14,5 @@ def once(method):
         return inner
 
 def time_cache(method):
-    
     pass
 
