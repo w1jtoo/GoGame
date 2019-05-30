@@ -4,6 +4,7 @@ from client.API.StoneGroup import StoneGroup
 from client.API.StoneSide import StoneSide
 
 from functools import lru_cache
+from client.utils.Common import once
 import threading
 
 
@@ -20,6 +21,8 @@ class Board(object):
         self._last_position = None
         self._last_stones = []
         self._is_passed = False
+        self._players = {}
+        self.paused = False
 
     @lru_cache()
     def is_possible(self, position: (int, int)):
@@ -56,14 +59,19 @@ class Board(object):
     def score(self):
         return self._score
 
-    def restart(self):
-        self.groups = []
-        self._score = 0
-        self.is_started = True
-        self._turn = StoneSide.BLACK
-        self._last_position = None
-        self._last_stones = []
+    @property
+    def is_ready(self):
+        return len(self._players.keys()) >= 2
+
+    def restart(self, dim: int):
+        players = self._players
+        self.paused = True
+        self.__init__(dim)
         self._is_passed = False
+        self._players = players
+        for player in self._players:
+            player.__init__()
+        self.paused = False
 
     def is_cantainable(self, position: (int, int)) -> bool:
         if 0 <= position[0] < self.dimensionality\
@@ -82,7 +90,7 @@ class Board(object):
 
     def pass_move(self):
         if self._is_passed:
-            self.is_started = False
+            self.paused = True
             self.update_score()
         self._is_passed = True
         self._change_turn()
@@ -104,6 +112,8 @@ class Board(object):
             raise Exception('Wrong turn')
 
     def add(self, position: (int, int)):
+        if position is None:
+            return
         if not 0 <= position[0] < self.dimensionality\
                 or not 0 <= position[1] < self.dimensionality:
             raise Exception('Out of dimensionality')
@@ -226,12 +236,29 @@ class Board(object):
     @lru_cache()
     def get_neighbours(self, position):
         result = []
-        if type(self[(position[0] + 1, position[1])]) == StoneGroup:
+        # here were "=="'s
+        if type(self[(position[0] + 1, position[1])]) is StoneGroup:
             result.append((position[0] + 1, position[1]))
-        if type(self[(position[0] - 1, position[1])]) == StoneGroup:
+        if type(self[(position[0] - 1, position[1])]) is StoneGroup:
             result.append((position[0] - 1, position[1]))
-        if type(self[(position[0], position[1] + 1)]) == StoneGroup:
+        if type(self[(position[0], position[1] + 1)]) is StoneGroup:
             result.append((position[0], position[1] + 1))
-        if type(self[(position[0], position[1] - 1)]) == StoneGroup:
+        if type(self[(position[0], position[1] - 1)]) is StoneGroup:
             result.append((position[0], position[1] - 1))
         return result
+
+    # @once
+    def set_players(self, pl1, pl2):
+        self._players.clear()
+        self._players[StoneSide.BLACK] = pl1
+        self._players[StoneSide.WHITE] = pl2
+
+    def get_current_player(self):
+        return self._players[self.turn]
+
+    def game_update(self):
+        while self.is_started:
+            if self.is_ready and \
+                    not self.paused and\
+                    self._players[self.turn]:
+                self.add(self._players[self.turn].make_disidion())
